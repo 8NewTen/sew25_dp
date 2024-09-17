@@ -3,8 +3,8 @@ import Song from './components/Song.vue'
 </script>
 
 <template>
-  <div>
-    <Song />
+  <div id="app">
+    <router-view></router-view>
   </div>
 </template>
 
