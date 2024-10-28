@@ -1,33 +1,31 @@
-package at.rennweg.htl.yousong.model;
+package at.rennweg.htl.yousong;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 @Entity
-@Table(name = "songs")
+@Table(name = "song", schema = "yousong_db")
 public class Song {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @JsonProperty("id")
-    private Long id;
+    @Column(name = "SongId", nullable = false)
+    private Integer id;
 
-    @Column(name ="song_title", nullable = false)
-    @JsonProperty("title")
+    @Column(name = "Title", length = 100)
     private String title;
 
-    @Column(name="song_artist")
-    @JsonProperty("artist")
+    @Column(name = "Artist", length = 100)
     private String artist;
 
-    @JsonProperty("genre")
+    @Column(name = "Genre", length = 100)
     private String genre;
 
-    @JsonProperty("length")
-    private int length;
+    @Column(name = "Length")
+    private Integer length;
+
 }
