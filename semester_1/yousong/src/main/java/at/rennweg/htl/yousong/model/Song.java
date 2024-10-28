@@ -1,19 +1,19 @@
-package at.rennweg.htl.yousong;
+package at.rennweg.htl.yousong.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 @Getter
 @Setter
 @Entity
+@CrossOrigin(origins = "http://localhost:5173")
 @Table(name = "song", schema = "yousong_db")
 public class Song {
     @Id
     @Column(name = "SongId", nullable = false)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @Column(name = "Title", length = 100)
@@ -27,5 +27,4 @@ public class Song {
 
     @Column(name = "Length")
     private Integer length;
-
 }

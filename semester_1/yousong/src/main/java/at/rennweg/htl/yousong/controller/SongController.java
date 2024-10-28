@@ -3,6 +3,10 @@ package at.rennweg.htl.yousong.controller;
 import at.rennweg.htl.yousong.model.Song;
 import at.rennweg.htl.yousong.repository.SongRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,12 +22,25 @@ public class SongController {
     private SongRepository songRepository;
 
     @GetMapping("/songs")
-    public List<Song> fetchSongs() {
-        return songRepository.findAll();
+    public ResponseEntity<Page<Song>> fetchOrSearchSongs(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "0") int page, // Default to first page
+            @RequestParam(defaultValue = "5") int size  // Default to 5 items per page
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Song> songsPage;
+
+        if (query != null && !query.isEmpty()) {
+            songsPage = songRepository.findByTitleOrArtist(query, query, pageable);
+        } else {
+            songsPage = songRepository.findAll(pageable);
+        }
+
+        return ResponseEntity.ok(songsPage);
     }
 
     @PostMapping("/songs")
-    public ResponseEntity<Song>  createSong(@RequestBody Song song) {
+    public ResponseEntity<Song> createSong(@RequestBody Song song) {
         System.out.println("Received Song: " + song);
         Song createdSong = songRepository.save(song);
         return ResponseEntity.ok(createdSong);
@@ -31,11 +48,10 @@ public class SongController {
 
     @PutMapping("/songs/{id}")
     public ResponseEntity<Song> updateSong(@PathVariable Long id, @RequestBody Song songDetails) {
-        // Fetch the song by ID from the repository
         Optional<Song> optionalSong = songRepository.findById(id);
 
         if (!optionalSong.isPresent()) {
-            return ResponseEntity.notFound().build(); // If song not found, return 404
+            return ResponseEntity.notFound().build();
         }
 
         Song song = optionalSong.get();
@@ -46,14 +62,11 @@ public class SongController {
         song.setGenre(songDetails.getGenre());
         song.setLength(songDetails.getLength());
 
-        // Save the updated song to the repository
         Song updatedSong = songRepository.save(song);
 
-        // Return the updated song as response
         return ResponseEntity.ok(updatedSong);
     }
 
-    // (Optional) Fetch a single song by its ID
     @GetMapping("/songs/{id}")
     public ResponseEntity<Song> getSongById(@PathVariable Long id) {
         Optional<Song> optionalSong = songRepository.findById(id);
@@ -63,5 +76,16 @@ public class SongController {
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @DeleteMapping("/songs/{id}")
+    public ResponseEntity<Void> deleteSong(@PathVariable("id") Long id) {
+        if (!songRepository.existsById(id)) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        songRepository.deleteById(id);
+
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }
