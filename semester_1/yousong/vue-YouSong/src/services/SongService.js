@@ -27,8 +27,12 @@ class SongService {
     return axios.post(API_URL, song)
       .then(response => response.data)
       .catch(error => {
-        console.error("There was an error creating the song:", error);
-        throw error; 
+        if (error.response && error.response.data) {
+          throw error.response.data;
+        } else {
+          console.error("There was an error creating the song:", error);
+          throw error; 
+        }
       });
   }
 
@@ -36,8 +40,12 @@ class SongService {
     return axios.put(`${API_URL}/${songId}`, song)
       .then(response => response.data)
       .catch(error => {
-        console.error("There was an error updating the song:", error);
-        throw error;
+        if (error.response && error.response.data) {
+          throw error.response.data;
+        } else {
+          console.error("There was an error creating the song:", error);
+          throw error; 
+        }
       });
   }
 

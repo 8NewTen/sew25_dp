@@ -9,5 +9,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface SongRepository extends JpaRepository<Song, Long> {
     // Modify method to support pagination
-    Page<Song> findByTitleOrArtist(String title, String artist, Pageable pageable);
+    Page<Song> findByTitleContainingIgnoreCaseOrArtistContainingIgnoreCase(String title, String artist, Pageable pageable);
 }

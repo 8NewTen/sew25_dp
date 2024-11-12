@@ -2,6 +2,7 @@ package at.rennweg.htl.yousong.controller;
 
 import at.rennweg.htl.yousong.model.Song;
 import at.rennweg.htl.yousong.repository.SongRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,38 +17,39 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "http://localhost:5173")
-public class SongController {
+public class  nSongController {
 
     @Autowired
     private SongRepository songRepository;
 
     @GetMapping("/songs")
     public ResponseEntity<Page<Song>> fetchOrSearchSongs(
-            @RequestParam(required = false) String query,
-            @RequestParam(defaultValue = "0") int page, // Default to first page
-            @RequestParam(defaultValue = "5") int size  // Default to 5 items per page
+            @RequestParam(required = false) String query, //stored query parameter
+            @RequestParam(defaultValue = "0") int page, // mapped page query to control which page
+            @RequestParam(defaultValue = "5") int size  // mapped size um anzahl an entries pro seite zu definieren
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size); //enables pagable objekt
         Page<Song> songsPage;
 
-        if (query != null && !query.isEmpty()) {
-            songsPage = songRepository.findByTitleOrArtist(query, query, pageable);
+        if (query != null && !query.isEmpty()) { //checks if the query is not null
+            songsPage = songRepository.findByTitleContainingIgnoreCaseOrArtistContainingIgnoreCase(query, query, pageable); // called die custom query method,
+            // looks for matches in either the title or artist field
         } else {
-            songsPage = songRepository.findAll(pageable);
+            songsPage = songRepository.findAll(pageable); //if no found fetch all songs
         }
 
         return ResponseEntity.ok(songsPage);
     }
 
     @PostMapping("/songs")
-    public ResponseEntity<Song> createSong(@RequestBody Song song) {
+    public ResponseEntity<Song> createSong(@Valid @RequestBody Song song) {
         System.out.println("Received Song: " + song);
         Song createdSong = songRepository.save(song);
         return ResponseEntity.ok(createdSong);
     }
 
     @PutMapping("/songs/{id}")
-    public ResponseEntity<Song> updateSong(@PathVariable Long id, @RequestBody Song songDetails) {
+    public ResponseEntity<Song> updateSong(@PathVariable Long id, @Valid @RequestBody Song songDetails) {
         Optional<Song> optionalSong = songRepository.findById(id);
 
         if (!optionalSong.isPresent()) {
@@ -62,8 +64,8 @@ public class SongController {
         song.setGenre(songDetails.getGenre());
         song.setLength(songDetails.getLength());
 
+        //save song to repo
         Song updatedSong = songRepository.save(song);
-
         return ResponseEntity.ok(updatedSong);
     }
 

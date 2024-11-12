@@ -1,8 +1,9 @@
 <template>
   <div class="d-flex flex-column justify-content-center">
-    <h1 class="text-center" style="text-align: center; margin: 1rem auto;">YouSong</h1>
+    <h1 class="text-center" style="text-align: center; margin: 1rem auto;">YouSong <br><!--!Relationships fehlt und validation noch nicht finished!--></h1>
     <input type="search" class="form-control" v-model="query" @input="searchSongs" placeholder="What do you want to listen to?" style="border: 2px solid #007bff;">
     <button class="btn btn-primary mb-3 mt-3" @click="navigateToCreateSong">Create New Song</button>
+    
     <div class="table-responsive mt-3" v-if="songs.length > 0">
       <table class="table table-striped">
         <thead>
@@ -32,6 +33,7 @@
         </tbody>
       </table>
     </div>
+
     <div v-else>
       <p class="text-center text-danger mt-3">No songs can be found. Please adjust your search.</p>
     </div>
@@ -55,6 +57,8 @@
 
 <script>
 import SongsService from '../services/SongService';
+import { required, minLength, maxLength, numeric } from '@vuelidate/validators';
+import useVuelidate from '@vuelidate/core';
 
 export default {
   name: 'Songs',
@@ -65,6 +69,23 @@ export default {
       currentPage: 0,
       totalPages: 0,
       pageSize: 5, // Set the number of entries per page
+    };
+  },
+  validations() {
+    return {
+      query: {
+        required,
+        minLength: minLength(1),
+        maxLength: maxLength(100),
+      },
+      songs: {
+        $each: {
+          title: { required, minLength: minLength(1), maxLength: maxLength(100) },
+          artist: { required, minLength: minLength(1), maxLength: maxLength(100) },
+          genre: { required, minLength: minLength(1), maxLength: maxLength(100) },
+          length: { required, numeric },
+        },
+      },
     };
   },
   methods: {
@@ -122,6 +143,9 @@ export default {
   },
   created() {
     this.getSongs(); // Fetch all songs when the component is created
+  },
+  mounted() {
+    this.$v = useVuelidate(); // Initialize Vuelidate
   },
 };
 </script>

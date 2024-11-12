@@ -1,0 +1,63 @@
+--CRUD--
+
+four Primary data Management operations:
+-Create : POST
+-Read   : GET
+-Update : PUT
+-Delete : DELETE
+
+to edit a song:
+
+Frontend: The user edits the song details in a form and submits it
+HTTP Request: Vue sends a PUT request to the backend API with the updated song information
+Backend (Spring Boot): The controller receives the request, finds the existing song in the database, updates its details, and saves it.
+Response: Spring Boot returns a confirmation, and Vue.js displays a success message to the user.
+
+
+--SEARCH--
+
+Spring Data JPA allows to define query methods by following a specific naming convention
+query methods provide a way to define database queries by simply declaring method signatures in a repository interface.
+
+naming conv:
+zb.: findByTitleContainingIgnoreCase(String title), definiert search conditions ohne SQL
+-> Spring interpretiert den method name und generiert die required query automatisch
+
+Benefits of Using Query Methods:
+Simplified Queries: Allows writing queries without needing SQL.
+Automatic Implementation: No need for manual code to implement these methods.
+Reusability: Query methods can be reused across the application.
+
+-
+
+A searchable REST repository allows to query data through RESTful APIs by using Spring Data JPA’s repositories
+
+create:
+- Define Repository Interface
+- Custom Query Methods
+- controller endpoint
+
+--PAGE--
+
+Data in kleineren Paketen anstatt ganzen Dataset, spring stellt interface zu verfügung
+
+-> optimized performance 
+-> better user exp
+
+Pagination Parameters: a page number and page size passed in the request
+Spring Data JPA Paging: PagingAndSortingRepository provides built-in methods like findAll(Pageable pageable)
+
+implement:
+-Repository Setup: SongRepository can extend PagingAndSortingRepository, giving it access to pagination methods7
+-Pagination in Controller
+-frontend integration
+
+
+
+
+
+
+
+
+
+
