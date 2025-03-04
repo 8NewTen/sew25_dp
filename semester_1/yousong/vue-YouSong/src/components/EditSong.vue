@@ -10,8 +10,13 @@
           v-model="song.title"
           class="form-control"
           placeholder="Enter song title"
-          required
         />
+        <span v-if="v$?.song?.title?.$dirty && v$?.song?.title?.required?.$invalid" class="text-danger">
+          Title is required.
+        </span>
+        <span v-if="v$?.song?.title?.$dirty && v$?.song?.title?.maxLength?.$invalid" class="text-danger">
+          Title cannot exceed 100 characters.
+        </span>
       </div>
       <div class="mb-3">
         <label for="artist" class="form-label">Artist</label>
@@ -21,19 +26,24 @@
           v-model="song.artist"
           class="form-control"
           placeholder="Enter artist name"
-          required
         />
+        <span v-if="v$?.song?.artist?.$dirty && v$?.song?.artist?.required?.$invalid" class="text-danger">
+          Artist is required.
+        </span>
+        <span v-if="v$?.song?.artist?.$dirty && v$?.song?.artist?.maxLength?.$invalid" class="text-danger">
+          Artist cannot exceed 100 characters.
+        </span>
       </div>
       <div class="mb-3">
-        <label for="genre" class="form-label">Genre</label>
-        <input
-          type="text"
-          id="genre"
-          v-model="song.genre"
-          class="form-control"
-          placeholder="Enter genre"
-          required
-        />
+        <label for="genres" class="form-label">Genres</label>
+        <span v-if="v$?.song?.genres?.$dirty && v$?.song?.genres?.required?.$invalid" class="text-danger">
+          At least one genre is required.
+        </span>
+        <select id="genres" v-model="song.genres" class="form-control" multiple>
+          <option v-for="genre in availableGenres" :key="genre" :value="genre">
+            {{ genre }}
+          </option>
+        </select>
       </div>
       <div class="mb-3">
         <label for="length" class="form-label">Length (seconds)</label>
@@ -43,8 +53,14 @@
           v-model="song.length"
           class="form-control"
           placeholder="Enter song length"
-          required
+          @blur="v$.song.length.$touch()"
         />
+        <span v-if="v$?.song?.length?.$dirty && v$?.song?.length?.required?.$invalid" class="text-danger">
+          Length is required.
+        </span>
+        <span v-if="v$?.song?.length?.$dirty && v$?.song?.length?.numeric?.$invalid" class="text-danger">
+          Length must be a number.
+        </span>
       </div>
       <div class="d-flex justify-content-between">
         <button type="submit" class="btn btn-primary">Save</button>
@@ -64,6 +80,8 @@
 
 <script>
 import SongService from '../services/SongService';
+import useVuelidate from '@vuelidate/core';
+import { required, maxLength, numeric } from '@vuelidate/validators';
 
 export default {
   name: 'EditSong',
@@ -72,14 +90,41 @@ export default {
       song: {
         title: '',
         artist: '',
-        genre: '',
+        genres: [],
         length: ''
       },
+      availableGenres: [], // To store the list of available genres
       successMessage: '',
-      errorMessage: '' // To store validation error messages
+      errorMessage: '', // To store validation error messages
+      v$: null 
     };
   },
+
+  setup() {
+    return { v$: useVuelidate() };
+  },
+
+  validations() {
+    return {
+      song: {
+        title: { required, maxLength: maxLength(100) },
+        artist: { required, maxLength: maxLength(100) },
+        genres: { required },
+        length: { required, numeric }
+      }
+    };
+  },
+
   methods: {
+    async fetchGenres() {
+      try {
+        const response = await SongService.getGenres();
+        this.availableGenres = response;
+        console.log("Fetched genres:", this.availableGenres);
+      } catch (error) {
+        console.error("Error fetching genres:", error);
+      }
+    },
     fetchSong() {
       const songId = this.$route.params.id;
       SongService.getSongById(songId)
@@ -91,18 +136,26 @@ export default {
         });
     },
     submitForm() {
+      console.log('Submitting song:', this.song);
+      
+      this.v$.$touch();
+
+      if (this.v$.$invalid) {
+        this.errorMessage = 'Please correct the validation errors.';
+        return;
+      }
+
       const songId = this.$route.params.id;
       SongService.updateSong(songId, this.song)
         .then(() => {
           this.successMessage = 'Song updated successfully!';
           setTimeout(() => {
             this.$router.push({ name: 'Songs' });
-          }, 2000); // Redirect after 2 seconds
+          }, 2000);
         })
         .catch((error) => {
-          console.error('Error response:', error.response); // Log the full error response
+          console.error('Error response:', error.response);
           if (error.response && error.response.data) {
-            // Display specific error messages from the backend
             const errorMessages = Object.values(error.response.data);
             this.errorMessage = errorMessages.join(', ');
           } else {
@@ -111,10 +164,12 @@ export default {
         });
     },
     goBack() {
-      this.$router.push({ name: 'Songs' }); // Navigate back to Song.vue
+      this.$router.push({ name: 'Songs' });
     }
   },
-  created() {
+
+  mounted() {
+    this.fetchGenres();
     this.fetchSong();
   }
 };

@@ -13,11 +13,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "http://localhost:5173")
-public class  nSongController {
+public class SongController {
 
     @Autowired
     private SongRepository songRepository;
@@ -25,16 +27,27 @@ public class  nSongController {
     @GetMapping("/songs")
     public ResponseEntity<Page<Song>> fetchOrSearchSongs(
             @RequestParam(required = false) String query, //stored query parameter
+            @RequestParam(required = false) List<String> genres, // Accepts genres as a list of strings
             @RequestParam(defaultValue = "0") int page, // mapped page query to control which page
             @RequestParam(defaultValue = "5") int size  // mapped size um anzahl an entries pro seite zu definieren
     ) {
         Pageable pageable = PageRequest.of(page, size); //enables pagable objekt
         Page<Song> songsPage;
 
-        if (query != null && !query.isEmpty()) { //checks if the query is not null
-            songsPage = songRepository.findByTitleContainingIgnoreCaseOrArtistContainingIgnoreCase(query, query, pageable); // called die custom query method,
+        if ((query != null && !query.isEmpty()) && (genres != null && !genres.isEmpty())) { //checks if the query and genre is not null
+            songsPage = songRepository.findByTitleContainingIgnoreCaseOrArtistContainingIgnoreCaseAndGenresIn(
+                    query, query, genres, pageable); // called die custom query method,
             // looks for matches in either the title or artist field
-        } else {
+        }
+        // Check if only query is provided
+        else if (query != null && !query.isEmpty()) {
+            songsPage = songRepository.findByTitleContainingIgnoreCaseOrArtistContainingIgnoreCase(query, query, pageable);
+        }
+        //Check if only genres are provided
+        else if (genres != null && !genres.isEmpty()) {
+            songsPage = songRepository.findByGenresIn(genres, pageable);
+        }
+        else {
             songsPage = songRepository.findAll(pageable); //if no found fetch all songs
         }
 
@@ -61,7 +74,7 @@ public class  nSongController {
         // Update the song properties with the new data
         song.setTitle(songDetails.getTitle());
         song.setArtist(songDetails.getArtist());
-        song.setGenre(songDetails.getGenre());
+        song.setGenres(songDetails.getGenres());
         song.setLength(songDetails.getLength());
 
         //save song to repo
@@ -90,4 +103,13 @@ public class  nSongController {
 
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
+
+
+    @GetMapping("/genres")
+    public List<String> fetchGenres() {
+        return songRepository.findAllDistinctGenres();
+    }
+
+
+
 }
