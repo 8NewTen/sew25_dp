@@ -19,6 +19,8 @@
       <button class="btn btn-primary mt-2" @click="applyGenreFilter">Apply Filter</button>
     </div>
 
+    <button class="btn btn-info mt-3" @click="navigateToArtists">Go to Artists</button>
+
     <button class="btn btn-primary mb-3 mt-3" @click="navigateToCreateSong">Create New Song</button>
     
     <div class="table-responsive mt-3" v-if="songs.length > 0">
@@ -37,7 +39,7 @@
           <tr v-for="song in songs" :key="song.id">
             <td>{{ song.id }}</td>
             <td>{{ song.title }}</td>
-            <td>{{ song.artist }}</td>
+            <td>{{ song.artist.name }}</td>
             <td>{{ song.genres.join(', ') }}</td>
             <td>{{ song.length }}</td>
             <td>
@@ -148,6 +150,9 @@ export default {
     },
     navigateToEditSong(songId) {
       this.$router.push({ name: 'EditSong', params: { id: songId } });
+    },
+    navigateToArtists() {
+    this.$router.push({ name: 'Artists' }); 
     },
     confirmDelete(songId) {
       if (confirm("Are you sure you want to delete this song?")) {

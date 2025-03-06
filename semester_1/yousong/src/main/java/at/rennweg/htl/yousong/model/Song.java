@@ -24,9 +24,9 @@ public class Song {
     @Size(max = 100, message = "Title must be less than or equal to 100 characters")  // Limit title length
     private String title;
 
-    @NotBlank(message = "Artist is required")  // Ensure artist is not null or empty
-    @Size(max = 100, message = "Artist must be less than or equal to 100 characters")  // Limit artist length
-    private String artist;
+    @ManyToOne  // Viele Songs können zu einem Artist gehören
+    //@JoinColumn(name = "artist_id", nullable = false)  // Fremdschlüssel in der Song-Tabelle
+    private Artist artist;
 
     @ElementCollection
     @CollectionTable(name = "song_genre", joinColumns = @JoinColumn(name = "song_id"))
