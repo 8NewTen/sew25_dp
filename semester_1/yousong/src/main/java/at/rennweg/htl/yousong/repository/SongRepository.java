@@ -24,6 +24,15 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     @Query("SELECT DISTINCT g FROM Song s JOIN s.genres g")
     List<String> findAllDistinctGenres();
 
+    Page<SongProjection> findAllProjectedBy(Pageable pageable);
 
+    SongProjection findProjectedById(Long id);
+
+    // Projected search methods
+    Page<SongProjection> findProjectedByTitleContainingIgnoreCaseOrArtistContainingIgnoreCase(
+            String title, String artist, Pageable pageable);
+
+
+    Page<SongProjection> findProjectedByGenresIn(List<String> genres, Pageable pageable);
 }
 

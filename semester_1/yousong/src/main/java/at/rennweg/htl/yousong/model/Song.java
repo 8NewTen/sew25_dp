@@ -33,7 +33,11 @@ public class Song {
     @Column(name = "genre")
     private List<String> genres;  // A song can have multiple genres (List of Strings)
 
-    @NotBlank
+    @NotNull
     @Positive(message = "Length must be a positive number")
     private Integer length;
+
+    @Lob
+    @Column(length = 16777215) // Using MEDIUMTEXT or similar for large data
+    private String musicData;
 }

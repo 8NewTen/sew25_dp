@@ -20,18 +20,14 @@
       </div>
       <div class="mb-3">
         <label for="artist" class="form-label">Artist</label>
-        <input
-          type="text"
-          id="artist"
-          v-model="song.artist"
-          class="form-control"
-          placeholder="Enter artist name"
-        />
+        <select id="artist" v-model="song.artist.id" class="form-control">
+          <option value="">Select an artist</option>
+          <option v-for="artist in availableArtists" :key="artist.id" :value="artist.id">
+            {{ artist.name }}
+          </option>
+        </select>
         <span v-if="v$?.song?.artist?.$dirty && v$?.song?.artist?.required?.$invalid" class="text-danger">
           Artist is required.
-        </span>
-        <span v-if="v$?.song?.artist?.$dirty && v$?.song?.artist?.maxLength?.$invalid" class="text-danger">
-          Artist cannot exceed 100 characters.
         </span>
       </div>
       <div class="mb-3">
@@ -62,8 +58,26 @@
           Length must be a number.
         </span>
       </div>
+      
+      <!-- Music File Upload Field -->
+      <div class="mb-3">
+        <label for="musicFile" class="form-label">Music File (Optional - Leave empty to keep current file)</label>
+        <input
+          type="file"
+          id="musicFile"
+          @change="handleFileUpload"
+          class="form-control"
+          accept="audio/*"
+        />
+        <div v-if="uploadStatus" class="mt-2" :class="{'text-success': uploadStatus === 'File selected', 'text-danger': uploadStatus !== 'File selected'}">
+          {{ uploadStatus }}
+        </div>
+      </div>
+      
       <div class="d-flex justify-content-between">
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
+          {{ isSubmitting ? 'Saving...' : 'Save' }}
+        </button>
         <button type="button" @click="goBack" class="btn btn-secondary ms-3">Return</button>
       </div>
     </form>
@@ -89,13 +103,20 @@ export default {
     return {
       song: {
         title: '',
-        artist: '',
+        artist: {
+          id: '',
+          name: ''
+        },
         genres: [],
-        length: ''
+        length: '',
+        musicData: null // Will only be set if uploading a new file
       },
       availableGenres: [], // To store the list of available genres
+      availableArtists: [], // To store the list of available artists
       successMessage: '',
       errorMessage: '', // To store validation error messages
+      uploadStatus: '',
+      isSubmitting: false,
       v$: null 
     };
   },
@@ -108,14 +129,51 @@ export default {
     return {
       song: {
         title: { required, maxLength: maxLength(100) },
-        artist: { required, maxLength: maxLength(100) },
+        artist: { required },
         genres: { required },
         length: { required, numeric }
+        // Note: musicData is not required here since it's optional in edit mode
       }
     };
   },
 
   methods: {
+    handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        this.uploadStatus = '';
+        this.song.musicData = null;
+        return;
+      }
+      
+      // Check file size as mp3 is formatted as ASCII String (limit to ~15MB which is safely under the MEDIUMTEXT limit, that is 16MB)
+      if (file.size > 15 * 1024 * 1024) {
+        this.uploadStatus = 'File is too large. Please select a file smaller than 15MB.';
+        this.song.musicData = null;
+        return;
+      }
+
+      // Check if it's an audio file
+      if (!file.type.startsWith('audio/')) {
+        this.uploadStatus = 'Please select a valid audio file.';
+        this.song.musicData = null;
+        return;
+      }
+
+      this.uploadStatus = 'File selected';
+      
+      // Convert file to data URL
+      const reader = new FileReader(); //FileRead API
+      reader.onload = (e) => {
+        this.song.musicData = e.target.result; // Contains the data URL
+      };
+      reader.onerror = (e) => {
+        this.uploadStatus = 'Error reading file.';
+        this.song.musicData = null;
+      };
+      reader.readAsDataURL(file);
+    },
+    
     async fetchGenres() {
       try {
         const response = await SongService.getGenres();
@@ -125,18 +183,32 @@ export default {
         console.error("Error fetching genres:", error);
       }
     },
+
+    async fetchArtists() {
+      try {
+        const response = await SongService.getArtists();
+        this.availableArtists = response;
+        console.log("Fetched artists:", this.availableArtists);
+      } catch (error) {
+        console.error("Error fetching artists:", error);
+        this.errorMessage = "Failed to load artists";
+      }
+    },
+
     fetchSong() {
       const songId = this.$route.params.id;
       SongService.getSongById(songId)
         .then((response) => {
           this.song = response;
+          // Note: musicData won't be included in the response due to projection
         })
         .catch((error) => {
           console.error('Error fetching song:', error);
         });
     },
+    
     submitForm() {
-      console.log('Submitting song:', this.song);
+      console.log('Submitting song update');
       
       this.v$.$touch();
 
@@ -145,8 +217,23 @@ export default {
         return;
       }
 
+      this.isSubmitting = true;
+
       const songId = this.$route.params.id;
-      SongService.updateSong(songId, this.song)
+      // Create a payload that might include musicData if a new file was uploaded
+      const updatePayload = {
+        title: this.song.title,
+        artist: { id: this.song.artist.id },
+        genres: this.song.genres,
+        length: this.song.length
+      };
+      
+      // Only include musicData if a new file was uploaded
+      if (this.song.musicData) {
+        updatePayload.musicData = this.song.musicData;
+      }
+
+      SongService.updateSong(songId, updatePayload)
         .then(() => {
           this.successMessage = 'Song updated successfully!';
           setTimeout(() => {
@@ -161,8 +248,12 @@ export default {
           } else {
             this.errorMessage = 'An unexpected error occurred.';
           }
+        })
+        .finally(() => {
+          this.isSubmitting = false;
         });
     },
+    
     goBack() {
       this.$router.push({ name: 'Songs' });
     }
@@ -170,6 +261,7 @@ export default {
 
   mounted() {
     this.fetchGenres();
+    this.fetchArtists();
     this.fetchSong();
   }
 };

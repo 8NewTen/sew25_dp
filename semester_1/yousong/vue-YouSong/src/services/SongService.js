@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:8080/api/songs';
 const GENRES_URL = 'http://localhost:8080/api/genres';
-
+const ARTISTS_URL = 'http://localhost:8080/api/artists';
 
 class SongService {
   // Fetch all songs with pagination and optional genre filter
@@ -30,22 +30,22 @@ class SongService {
   createSong(song) {
     return axios.post(API_URL, { 
       title: song.title,
-      artist: song.artist,
-      genres: Array.isArray(song.genres) ? song.genres : [], // Ensure genres is an array
-      length: song.length})
-      .then(response => response.data)
-      .catch(error => {
-        if (error.response && error.response.data) {
-          throw error.response.data;
-        } else {
-          console.error("There was an error creating the song:", error);
-          throw error; 
-        }
-      });
+      artist: { id: song.artist }, // Send artist as an object with id field
+      genres: Array.isArray(song.genres) ? song.genres : [], 
+      length: song.length
+    })
+    .then(response => response.data)
+    .catch(error => {
+      if (error.response && error.response.data) {
+        throw error.response.data;
+      } else {
+        console.error("There was an error creating the song:", error);
+        throw error; 
+      }
+    });
   }
 
   updateSong(songId, song) {
-    
     return axios.put(`${API_URL}/${songId}`, song)
       .then(response => response.data)
       .catch(error => {
@@ -67,6 +67,16 @@ class SongService {
       });
   }
 
+  // Fetcht den song mit der ID und den Musikdaten
+  getSongWithMusicData(songId) {
+    return axios.get(`${API_URL}/${songId}/play`)
+      .then(response => response.data)
+      .catch(error => {
+        console.error("Error fetching song with music data:", error);
+        throw error;
+      });
+  }
+
   deleteSong(songId) {
     return axios
       .delete(`${API_URL}/${songId}`)
@@ -79,11 +89,21 @@ class SongService {
         throw error;
       });
   }
+
   getGenres() {
     return axios.get(GENRES_URL)
       .then(response => response.data) // Return the list of genres
       .catch(error => {
         console.error("Error fetching genres:", error);
+        throw error;
+      });
+  }
+
+  getArtists() {
+    return axios.get(ARTISTS_URL)
+      .then(response => response.data)
+      .catch(error => {
+        console.error("Error fetching artists:", error);
         throw error;
       });
   }

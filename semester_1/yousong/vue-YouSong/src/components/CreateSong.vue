@@ -26,16 +26,12 @@
         <span v-if="v$?.song?.artist?.$dirty && v$?.song?.artist?.required?.$invalid" class="text-danger">
           Artist is required.
         </span>
-        <span v-if="v$?.song?.artist?.$dirty && v$?.song?.artist?.maxLength?.$invalid" class="text-danger">
-          Artist cannot exceed 100 characters.
-        </span>
-        <input
-          type="text"
-          id="artist"
-          v-model="song.artist"
-          class="form-control"
-          placeholder="Enter artist name"
-        />
+        <select id="artist" v-model="song.artist" class="form-control">
+          <option value="">Select an artist</option>
+          <option v-for="artist in availableArtists" :key="artist.id" :value="artist.id">
+            {{ artist.name }}
+          </option>
+        </select>
       </div>
 
       <!-- Genres Field with Validation -->
@@ -67,16 +63,36 @@
         <input
           type="number"
           id="length"
-          v-model="song.length"
+          v-model.number="song.length"
           class="form-control"
           placeholder="Enter length of the song"
-          @blur=" v$.song.length.$touch()"
+          @blur="v$.song.length.$touch()"
         />
+      </div>
+
+      <!-- Music File Upload Field -->
+      <div class="mb-3">
+        <label for="musicFile" class="form-label">Music File</label>
+        <span v-if="v$?.song?.musicData?.$dirty && v$?.song?.musicData?.required?.$invalid" class="text-danger">
+          Music file is required.
+        </span>
+        <input
+          type="file"
+          id="musicFile"
+          @change="handleFileUpload"
+          class="form-control"
+          accept="audio/*"
+        />
+        <div v-if="uploadStatus" class="mt-2" :class="{'text-success': uploadStatus === 'File selected', 'text-danger': uploadStatus !== 'File selected'}">
+          {{ uploadStatus }}
+        </div>
       </div>
 
       <!-- Buttons -->
       <div class="d-flex justify-content-between">
-        <button type="submit" class="btn btn-primary">Submit</button>
+        <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
+          {{ isSubmitting ? 'Submitting...' : 'Submit' }}
+        </button>
         <button type="button" @click="goBack" class="btn btn-secondary ms-3">Return</button>
       </div>
     </form>
@@ -105,12 +121,16 @@ export default {
         title: '',
         artist: '',
         genres: [],
-        length: ''
+        length: null, // Changed from empty string to null for better numeric handling
+        musicData: null // To store the music file as data URL
       },
       availableGenres: [],
+      availableArtists: [],
       successMessage: '',
-      errorMessage: '', // To store validation error messages
-      v$: null // Hier speichern wir die Vuelidate-Instanz
+      errorMessage: '',
+      uploadStatus: '',
+      isSubmitting: false,
+      v$: null
     };
   },
 
@@ -118,21 +138,66 @@ export default {
     return { v$: useVuelidate() }
   },
 
-  validations () {
-      return {
-        song: {
-          title: { required, maxLength: maxLength(100) },
-          artist: { required, maxLength: maxLength(100) },
-          genres: { required },
-          length: { required, numeric }
-        }
-      };
+  validations() {
+    return {
+      song: {
+        title: { required, maxLength: maxLength(100) },
+        artist: { required }, // Only validate required, no maxLength for ID
+        genres: { required },
+        length: { required, numeric },
+        musicData: { required }
+      }
+    };
   },
 
   methods: {
+    handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        this.uploadStatus = '';
+        this.song.musicData = null;
+        return;
+      }
+      
+      // Check file size as mp3 is formatted as ASCII String (limit to ~15MB which is safely under the MEDIUMTEXT limit)
+      if (file.size > 15 * 1024 * 1024) {
+        this.uploadStatus = 'File is too large. Please select a file smaller than 15MB.';
+        this.song.musicData = null;
+        return;
+      }
 
-    
-    // Fetch genres from API
+      // Check if it's an audio file
+      if (!file.type.startsWith('audio/')) {
+        this.uploadStatus = 'Please select a valid audio file.';
+        this.song.musicData = null;
+        return;
+      }
+
+      this.uploadStatus = 'File selected';
+      
+      // Convert file to data URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.song.musicData = e.target.result; // This will be a data URL
+      };
+      reader.onerror = (e) => {
+        this.uploadStatus = 'Error reading file.';
+        this.song.musicData = null;
+      };
+      reader.readAsDataURL(file);
+    },
+
+    async fetchArtists() {
+      try {
+        const response = await SongsService.getArtists();
+        this.availableArtists = response;
+        console.log("Fetched artists:", this.availableArtists);
+      } catch (error) {
+        console.error("Error fetching artists:", error);
+        this.errorMessage = "Failed to load artists";
+      }
+    },
+
     async fetchGenres() {
       try {
         const response = await SongsService.getGenres();
@@ -140,14 +205,18 @@ export default {
         console.log("Fetched genres:", this.availableGenres);
       } catch (error) {
         console.error("Error fetching genres:", error);
+        this.errorMessage = "Failed to load genres";
       }
     },
 
-    // Submit the form with validation
     submitForm() {
-      console.log('Submitting song:', this.song); // Log the song data to verify the form input
+      console.log('Submitting song');
+      
+      // Clear previous messages
+      this.successMessage = '';
+      this.errorMessage = '';
 
-      // Trigger Validation
+      // Trigger validation
       this.v$.$touch();
 
       // Check for validation errors
@@ -156,34 +225,49 @@ export default {
         return;
       }
 
+      // Convert length to number if it's not already
+      if (typeof this.song.length === 'string') {
+        this.song.length = parseInt(this.song.length, 10);
+      }
+
+      this.isSubmitting = true;
+
       // Call Backend Service
       SongsService.createSong(this.song)
         .then(() => {
           this.successMessage = 'Song created successfully!';
           setTimeout(() => {
             this.$router.push({ name: 'Songs' });
-          }, 2000); // Redirect after 2 seconds
+          }, 2000);
         })
         .catch((error) => {
-          console.error('Error response:', error.response); // Log the full error response
+          console.error('Error response:', error);
+          
           if (error.response && error.response.data) {
             // Display specific error messages from the backend
-            const errorMessages = Object.values(error.response.data);
-            this.errorMessage = errorMessages.join(', ');
+            if (typeof error.response.data === 'object') {
+              const errorMessages = Object.values(error.response.data).join(', ');
+              this.errorMessage = errorMessages;
+            } else {
+              this.errorMessage = error.response.data.toString();
+            }
           } else {
-            this.errorMessage = 'An unexpected error occurred.';
+            this.errorMessage = 'An unexpected error occurred. Please try again.';
           }
+        })
+        .finally(() => {
+          this.isSubmitting = false;
         });
     },
 
-    // Navigate back
     goBack() {
-      this.$router.push({ name: 'Songs' }); // Navigate back to Song.vue page
+      this.$router.push({ name: 'Songs' });
     }
   },
 
   mounted() {
     this.fetchGenres();
+    this.fetchArtists();
   }
 };
 </script>

@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex flex-column justify-content-center">
     <h1 class="text-center" style="text-align: center; margin: 1rem auto;">
-      YouSong <br><!--!Relationships fehlt und validation noch nicht finished!-->
+      YouSong <br><!--!Relationships fehlt-->
     </h1>
     <input type="search" class="form-control" v-model="query" @input="searchSongs" placeholder="What do you want to listen to?" style="border: 2px solid #007bff;">
 
@@ -32,7 +32,7 @@
             <th>Song Artist</th>
             <th>Song Genre</th>
             <th>Length (seconds)</th>
-            <th>Edit or Delete</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -44,6 +44,9 @@
             <td>{{ song.length }}</td>
             <td>
               <div class="d-flex align-items-center">
+                <button class="btn btn-success me-2" @click="playSong(song.id)" title="Play song">
+                  <i class="bi bi-play-fill"></i> Play
+                </button>
                 <button class="btn btn-secondary me-2" @click="navigateToEditSong(song.id)">Edit</button>
                 <button class="btn btn-danger" @click="confirmDelete(song.id)">Delete</button>
               </div>
@@ -55,6 +58,39 @@
 
     <div v-else>
       <p class="text-center text-danger mt-3">No songs can be found. Please adjust your search.</p>
+    </div>
+
+    <!-- Audio Player Modal -->
+    <div class="modal fade" id="audioPlayerModal" tabindex="-1" aria-labelledby="audioPlayerModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="audioPlayerModalLabel">
+              {{ currentPlayingSong ? `Playing: ${currentPlayingSong.title}` : 'Music Player' }}
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="currentPlayingSong" class="text-center">
+              <audio ref="audioPlayer" controls class="w-100" autoplay>
+                <source :src="audioSource" type="audio/mpeg">
+                Your browser does not support the audio element.
+              </audio>
+              <p class="mt-3">
+                <strong>Artist:</strong> {{ currentPlayingSong.artist?.name }}<br>
+                <strong>Genres:</strong> {{ currentPlayingSong.genres?.join(', ') }}<br>
+                <strong>Length:</strong> {{ formatDuration(currentPlayingSong.length) }}
+              </p>
+            </div>
+            <div v-else class="alert alert-info">
+              Loading song...
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Pagination Section -->
@@ -78,6 +114,7 @@
 import SongsService from '../services/SongService';
 import { required, minLength, maxLength, numeric } from '@vuelidate/validators';
 import useVuelidate from '@vuelidate/core';
+import * as bootstrap from 'bootstrap'
 
 export default {
   name: 'Songs',
@@ -91,6 +128,9 @@ export default {
       selectedGenres: [],
       availableGenres: [],
       showGenreFilter: false, // Toggle for genre filter UI
+      currentPlayingSong: null,
+      audioSource: null,
+      audioModal: null,
     };
   },
   validations() {
@@ -178,6 +218,39 @@ export default {
         console.error("Error fetching genres:", error);
       }
     },
+    formatDuration(seconds) {
+      if (!seconds) return '0:00';
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    },
+    async playSong(songId) {
+      try {
+        // First, reset current data
+        this.currentPlayingSong = null;
+        this.audioSource = null;
+        
+        // Fetch the song with music data using the special endpoint
+        const song = await SongsService.getSongWithMusicData(songId);
+        this.currentPlayingSong = song;
+        this.audioSource = song.musicData;
+        
+        // Show the modal
+        if (this.audioModal) {
+          this.audioModal.show();
+          
+          // When the modal is shown, set focus to the audio player for better accessibility
+          this.$nextTick(() => {
+            if (this.$refs.audioPlayer) {
+              this.$refs.audioPlayer.focus();
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error playing song:', error);
+        alert('Could not play this song. The music file might be missing or corrupted.');
+      }
+    }
   },
   created() {
     this.getSongs();
@@ -185,7 +258,13 @@ export default {
   },
   mounted() {
     this.$v = useVuelidate();
-  },
+    this.$nextTick(() => {
+      const modalElement = document.getElementById('audioPlayerModal');
+      if (modalElement) {
+        this.audioModal = new bootstrap.Modal(modalElement);
+      }
+    });
+    },
 };
 </script>
 
