@@ -70,8 +70,19 @@ public class SongController {
     }
 
     @PutMapping("/songs/{id}")
-    public ResponseEntity<Song> updateSong(@PathVariable Long id, @Valid @RequestBody Song songDetails) {
+    public ResponseEntity<Song> updateSong(
+            @PathVariable Long id,
+            @Valid @RequestBody Song songDetails,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+
         return songRepository.findById(id).map(song -> {
+            // Check if the ETag matches the current version
+            String currentVersion = Long.toString(song.getVersion());
+            if (ifMatch != null && !ifMatch.replace("\"", "").equals(currentVersion)) {
+                return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).<Song>build();
+            }
+
+            // Update song fields
             song.setTitle(songDetails.getTitle());
             song.setGenres(songDetails.getGenres());
             song.setLength(songDetails.getLength());
@@ -84,14 +95,18 @@ public class SongController {
             Optional<Artist> optionalArtist = artistRepository.findById(songDetails.getArtist().getId());
             optionalArtist.ifPresent(song::setArtist);
 
-            return ResponseEntity.ok(songRepository.save(song));
+            // Save and return with new ETag
+            Song savedSong = songRepository.save(song);
+            return ResponseEntity.ok()
+                    .eTag(Long.toString(savedSong.getVersion()))
+                    .body(savedSong);
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/songs/{id}")
     public ResponseEntity<SongProjection> getSongById(@PathVariable Long id) {
         SongProjection song = songRepository.findProjectedById(id);
-        return song != null ? ResponseEntity.ok(song) : ResponseEntity.notFound().build();
+        return song != null ? ResponseEntity.ok().eTag(Long.toString(song.getVersion())).body(song) : ResponseEntity.notFound().build();
     }
 
     @GetMapping("/songs/{id}/play")

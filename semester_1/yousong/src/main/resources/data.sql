@@ -11,18 +11,18 @@ VALUES (1,'Dave'),
        (10,'Lil Baby');
 
 
-INSERT INTO song( title, artist_id, length)
-VALUES ('Starlight', 1, 208),
-       ('Vampire Hour', 2, 189),
-       ('Evicted', 3, 181),
-       ('Escape', 3, 148),
-       ('Wasted Youth', 4, 168),
-       ('Divertimento In D Allegro', 5, 239),
-       ('bugging', 6, 197),
-       ('GANGSIGNS RMX', 7, 242),
-       ('Vamp Anthem', 2, 180),
-       ('I Cant Save You', 8, 210),
-       ('Me or Sum', 9, 248);
+INSERT INTO song( title, artist_id, length, version)
+VALUES ('Starlight', 1, 208, 0),
+       ('Vampire Hour', 2, 189, 0),
+       ('Evicted', 3, 181, 0),
+       ('Escape', 3, 148, 0),
+       ('Wasted Youth', 4, 168, 0),
+       ('Divertimento In D Allegro', 5, 239, 0),
+       ('bugging', 6, 197, 0),
+       ('GANGSIGNS RMX', 7, 242, 0),
+       ('Vamp Anthem', 2, 180, 0),
+       ('I Cant Save You', 8, 210, 0),
+       ('Me or Sum', 9, 248, 0);
 
 INSERT INTO song_genre(song_id, genre)
 values (1, 'UK Rap'),

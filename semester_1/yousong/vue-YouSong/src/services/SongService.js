@@ -45,27 +45,33 @@ class SongService {
     });
   }
 
-  updateSong(songId, song) {
-    return axios.put(`${API_URL}/${songId}`, song)
-      .then(response => response.data)
-      .catch(error => {
-        if (error.response && error.response.data) {
-          throw error.response.data;
-        } else {
-          console.error("There was an error updating the song:", error);
-          throw error; 
-        }
-      });
-  }
+    updateSong(songId, song, etag) {
+        return axios.put(`${API_URL}/songs/${songId}`, song, {
+            headers: etag ? { 'If-Match': etag } : {}
+        })
+            .then(response => response.data)
+            .catch(error => {
+                if (error.response) {
+                    if (error.response.status === 412) {
+                        console.error("Version mismatch! The song has been updated elsewhere.");
+                        throw new Error("Version mismatch: The song has been modified by someone else.");
+                    }
+                    throw error.response.data;
+                } else {
+                    console.error("Error updating song:", error);
+                    throw error;
+                }
+            });
+    }
 
-  getSongById(songId) {
-    return axios.get(`${API_URL}/${songId}`)
-      .then(response => response.data)
-      .catch(error => {
-        console.error("There was an error fetching the song:", error);
-        throw error;
-      });
-  }
+
+    getSongById(songId) {
+        return axios.get(`${API_URL}/${songId}`)
+            .catch(error => {
+                console.error("There was an error fetching the song:", error);
+                throw error;
+            });
+    }
 
   // Fetcht den song mit der ID und den Musikdaten
   getSongWithMusicData(songId) {

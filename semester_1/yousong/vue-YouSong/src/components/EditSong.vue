@@ -96,6 +96,7 @@
 import SongService from '../services/SongService';
 import useVuelidate from '@vuelidate/core';
 import { required, maxLength, numeric } from '@vuelidate/validators';
+import axios from "axios";
 
 export default {
   name: 'EditSong',
@@ -111,6 +112,7 @@ export default {
         length: '',
         musicData: null // Will only be set if uploading a new file
       },
+      version: null,
       availableGenres: [], // To store the list of available genres
       availableArtists: [], // To store the list of available artists
       successMessage: '',
@@ -198,13 +200,17 @@ export default {
     fetchSong() {
       const songId = this.$route.params.id;
       SongService.getSongById(songId)
-        .then((response) => {
-          this.song = response;
-          // Note: musicData won't be included in the response due to projection
-        })
-        .catch((error) => {
-          console.error('Error fetching song:', error);
-        });
+          .then((response) => {
+            this.song = response.data;
+
+            // Extract ETag from response headers
+            const etag = response.headers && response.headers.etag;
+            this.version = etag ? etag.replace(/['"]+/g, '') : null;
+            console.log("ETag:", this.song.version);
+          })
+          .catch((error) => {
+            console.error('Error fetching song:', error);
+          });
     },
     
     submitForm() {

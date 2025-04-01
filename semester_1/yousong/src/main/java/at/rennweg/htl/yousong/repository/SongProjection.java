@@ -12,4 +12,5 @@ public interface SongProjection {
     Artist getArtist();
     List<String> getGenres();
     Integer getLength();
+    Long getVersion();
 }

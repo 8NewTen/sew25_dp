@@ -40,4 +40,7 @@ public class Song {
     @Lob
     @Column(length = 16777215) // Using MEDIUMTEXT or similar for large data
     private String musicData;
+
+    @Version
+    private Long version;
 }
