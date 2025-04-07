@@ -45,28 +45,35 @@ class SongService {
     });
   }
 
-    updateSong(songId, song, etag) {
-        return axios.put(`${API_URL}/songs/${songId}`, song, {
-            headers: etag ? { 'If-Match': etag } : {}
-        })
-            .then(response => response.data)
-            .catch(error => {
-                if (error.response) {
-                    if (error.response.status === 412) {
-                        console.error("Version mismatch! The song has been updated elsewhere.");
-                        throw new Error("Version mismatch: The song has been modified by someone else.");
-                    }
-                    throw error.response.data;
-                } else {
-                    console.error("Error updating song:", error);
-                    throw error;
-                }
-            });
+  updateSong(songId, song, etag) {
+    console.log("Sending etag:", etag); // Debug
+    
+    const headers = {};
+    if (etag) {
+        // Manchmal muss der ETag in Anführungszeichen stehen
+        headers['If-Match'] = etag.includes('"') ? etag : `"${etag}"`;
     }
+    
+    return axios.put(`${API_URL}/${songId}`, song, { headers })
+    .then(response => response.data)
+    .catch(error => {
+        console.log("Error response:", error.response); // Debug
+        if (error.response && error.response.status === 412) {
+            console.error("Version mismatch! The song has been updated elsewhere.");
+            throw new Error("Version mismatch: The song has been modified by someone else.");
+        } else if (error.response) {
+            throw error.response.data;
+        } else {
+            console.error("Error updating song:", error);
+            throw error;
+        }
+    });
+}
+
 
 
     getSongById(songId) {
-        return axios.get(`${API_URL}/${songId}`)
+        return axios.get(`${API_URL}/${songId}`, { responseType: 'json' })
             .catch(error => {
                 console.error("There was an error fetching the song:", error);
                 throw error;

@@ -75,6 +75,9 @@ public class SongController {
             @Valid @RequestBody Song songDetails,
             @RequestHeader(value = "If-Match", required = false) String ifMatch) {
 
+        System.out.println("Received If-Match: " + ifMatch);
+
+
         return songRepository.findById(id).map(song -> {
             // Check if the ETag matches the current version
             String currentVersion = Long.toString(song.getVersion());

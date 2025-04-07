@@ -198,19 +198,28 @@ export default {
     },
 
     fetchSong() {
-      const songId = this.$route.params.id;
-      SongService.getSongById(songId)
-          .then((response) => {
-            this.song = response.data;
-
-            // Extract ETag from response headers
-            const etag = response.headers && response.headers.etag;
-            this.version = etag ? etag.replace(/['"]+/g, '') : null;
-            console.log("ETag:", this.song.version);
-          })
-          .catch((error) => {
-            console.error('Error fetching song:', error);
-          });
+    const songId = this.$route.params.id;
+    SongService.getSongById(songId)
+      .then((response) => {
+        this.song = response.data;
+        
+        // Debug: Überprüfe die Header
+        console.log("Response headers:", response.headers);
+        
+        // Extract ETag from response headers
+        const etag = response.headers && response.headers.etag;
+        
+        // Alternative: Lies die Version direkt aus dem Song-Objekt
+        this.version = etag ? etag.replace(/['"]+/g, '') : String(this.song.version);
+        
+        // Debug: Überprüfe beide Werte
+        console.log("ETag from headers:", etag);
+        console.log("Version set:", this.version);
+        console.log("Song version:", this.song.version);
+      })
+      .catch((error) => {
+        console.error('Error fetching song:', error);
+      });
     },
     
     submitForm() {
@@ -239,26 +248,36 @@ export default {
         updatePayload.musicData = this.song.musicData;
       }
 
-      SongService.updateSong(songId, updatePayload)
-        .then(() => {
-          this.successMessage = 'Song updated successfully!';
-          setTimeout(() => {
-            this.$router.push({ name: 'Songs' });
-          }, 2000);
-        })
-        .catch((error) => {
-          console.error('Error response:', error.response);
-          if (error.response && error.response.data) {
-            const errorMessages = Object.values(error.response.data);
-            this.errorMessage = errorMessages.join(', ');
-          } else {
-            this.errorMessage = 'An unexpected error occurred.';
-          }
-        })
-        .finally(() => {
-          this.isSubmitting = false;
-        });
-    },
+        SongService.updateSong(songId, updatePayload, this.version)
+          .then(() => {
+            this.successMessage = 'Song updated successfully!';
+            setTimeout(() => {
+              this.$router.push({ name: 'Songs' });
+            }, 2000);
+          })
+          .catch((error) => {
+          console.error('Error:', error);
+              if (error.message && error.message.includes("Version mismatch")) {
+                  this.errorMessage = "This song has been modified elsewhere. Please refresh the page and try again.";
+              } else if (error.response) {
+                  if (error.response.status === 412) {
+                      this.errorMessage = "Version conflict: This song has been modified by someone else. Please refresh.";
+                  } else if (error.response.data) {
+                      const errorMessages = error.response.data instanceof Object 
+                          ? Object.values(error.response.data).join(', ')
+                          : error.response.data;
+                      this.errorMessage = errorMessages;
+                  } else {
+                      this.errorMessage = `Error ${error.response.status}: ${error.response.statusText}`;
+                  }
+              } else {
+                  this.errorMessage = 'An unexpected error occurred.';
+              }
+          })
+          .finally(() => {
+            this.isSubmitting = false;
+          });
+      },
     
     goBack() {
       this.$router.push({ name: 'Songs' });
